@@ -29,3 +29,4 @@ def summarize(text):
 
     result = summarizer(text, max_length=100, min_length=30, do_sample=False)
     return result[0]['summary_text']
+    return result[0]['summary_text']
