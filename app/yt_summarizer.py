@@ -1,19 +1,24 @@
 import re
+import google.generativeai as genai
 
-from langchain.chains.summarize import load_summarize_chain
 from langchain.text_splitter import TokenTextSplitter
-from langchain_community.chat_models import ChatOllama
 from langchain_community.document_loaders import YoutubeLoader
 from langchain_core.prompts import PromptTemplate
+from langchain.schema.document import Document
+
+
+# Hardcoded Gemini API Key (replace with GitHub Secret)
+api_key = "your-gemini-api-key-here"
 
 
 def check_link(link):
-    """The function `check_link` uses a regular expression to check if a given link is a valid YouTube video link."""
+    """Check if the link is a valid YouTube video link."""
     yt_regex = r"^(?:https?:\/\/)?(?:www\.)?youtu(?:be\.com\/watch\?v=|\.be\/)([\w\-\_]+)(?:\?.*)?$"
     return re.match(yt_regex, link) is not None
 
 
 def get_transcript(video_link):
+    """Fetch transcript from YouTube video."""
     if not check_link(video_link):
         return "Invalid YouTube URL."
     try:
@@ -25,15 +30,35 @@ def get_transcript(video_link):
 
 
 def split_chunks(transcript):
+    """Split transcript into token-friendly chunks."""
+    splitter = TokenTextSplitter(chunk_size=7500, chunk_overlap=100)
+    return splitter.split_documents(transcript)
 
-    splitter = TokenTextSplitter(
-        chunk_size=7500, chunk_overlap=100
-    )  # Llama 3 model takes up to 8192 input tokens, so I set chunk size to 7500 for leaving some space to model.
-    chunks = splitter.split_documents(transcript)
-    return chunks
+
+class GeminiSummarizationChain:
+    """Custom chain for summarization using Gemini API."""
+
+    def __init__(self, api_key, prompt_template):
+        genai.configure(api_key=api_key)
+        self.model = genai.GenerativeModel("gemini-2.0-flash")
+        self.prompt_template = prompt_template
+
+    def run(self, docs: list[Document]):
+        all_summaries = []
+        for i, doc in enumerate(docs):
+            prompt = self.prompt_template.format(text=doc.page_content)
+            try:
+                response = self.model.generate_content(prompt)
+                result = response.text.strip()
+                result += f"\n\n[End of Notes, Message #{i + 1}]"
+                all_summaries.append(result)
+            except Exception as e:
+                all_summaries.append(f"Error during summarization: {e}")
+        return "\n\n".join(all_summaries)
 
 
 def yt_summarization_chain():
+    """Create the Gemini-based summarization chain."""
     prompt_template = PromptTemplate(
         template="""As a professional summarizer specialized in video content, create a detailed and comprehensive summary of the YouTube video transcript provided. While crafting your summary, adhere to these guidelines:
             1. Capture the essence of the video, focusing on main ideas and key details. Ensure the summary is in-depth and insightful, reflecting any narrative or instructional elements present in the video.
@@ -53,18 +78,15 @@ def yt_summarization_chain():
         DETAILED SUMMARY:""",
         input_variables=["text"],
     )
-    llm = ChatOllama(model="llama3:instruct", base_url="http://127.0.0.1:11434")
-    summarize_chain = load_summarize_chain(
-        llm=llm, prompt=prompt_template, verbose=True
-    )
-    return summarize_chain
+    return GeminiSummarizationChain(api_key="AIzaSyDlVCKsmkbHbQHl49zHkzbBbQ7iTRmdBSM", prompt_template=prompt_template)
 
 
 def summarize_video(video_link):
     transcript = get_transcript(video_link)
-    chunks = split_chunks(transcript)
+    if isinstance(transcript, str):
+        return transcript  # error string returned
 
+    chunks = split_chunks(transcript)
     sum_chain = yt_summarization_chain()
     result = sum_chain.run(chunks)
-
     return result
