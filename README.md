@@ -4,12 +4,6 @@ A Python script designed to summarize webpages from specified URLs using the Lan
 
 ## Requirements
 
-[ollama](https://ollama.com/) must be installed and served
-
-```bash
-ollama run llama3:instruct
-```
-
 ```bash
 pip install -r requirements.txt
 ```
@@ -50,17 +44,6 @@ docker run -p 7860:7860 web_summarizer
 # Run if you run ollama on host
 docker run -d --network='host' -p 7860:7860 web_summarizer
 ```
-
-
-## Development
-
-To contribute to the development of this script, clone the repository, make your changes, and submit a pull request. We welcome contributions that improve the script's functionality or extend its capabilities.
-
-- [x] Summarize youtube videos
-- [x] Dockerize project
-- [ ] Translate to different languages
-- [ ] Streaming text output on gradio
-- [ ] Serve on web
 
 ## License
 
