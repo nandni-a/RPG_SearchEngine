@@ -30,3 +30,20 @@ def setup_translator_chain(language):
     )
 
     return GeminiTranslatorChain(api_key=api_key, prompt_template=prompt_template, target_language=language)
+
+import argparse
+
+def main():
+    parser = argparse.ArgumentParser(description="Translate text using Gemini API.")
+    parser.add_argument("-t", "--text", required=True, help="Text to translate")
+    parser.add_argument("-l", "--language", required=True, help="Target language (e.g., Hindi, French)")
+    args = parser.parse_args()
+
+    translator = setup_translator_chain(args.language)
+    result = translator.run(args.text)
+
+    print("\n--- Translation ---\n")
+    print(result)
+
+if __name__ == "__main__":
+    main()
